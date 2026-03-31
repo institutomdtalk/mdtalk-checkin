@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MD Talk — Check-in</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root {
+    --navy: #1B2A4A;
+    --navy-light: #243761;
+    --gold: #B8963E;
+    --gold-light: #C8A84B;
+    --cream: #FAF7F2;
+    --cream-dark: #F0EBE1;
+    --text: #1a1a1a;
+    --text-muted: #6b6b6b;
+    --border: rgba(27,42,74,0.12);
+    --success: #2D6A4F;
+    --success-bg: #D8F3DC;
+    --danger: #A32D2D;
+    --danger-bg: #FCEBEB;
+    --warn: #854F0B;
+    --warn-bg: #FAEEDA;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { background: var(--cream); min-height: 100vh; }
+  body { font-family: 'DM Sans', sans-serif; color: var(--text); min-height: 100vh; background: var(--cream); }
+
+  /* LAYOUT */
+  .page { display: none; min-height: 100vh; }
+  .page.active { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem 1rem; }
+
+  /* HEADER */
+  .brand { text-align: center; margin-bottom: 2.5rem; animation: fadeDown 0.6s ease; }
+  .brand-mark { font-size: 10px; letter-spacing: 5px; text-transform: uppercase; color: var(--gold); font-weight: 500; margin-bottom: 6px; }
+  .brand-name { font-family: 'Cormorant Garamond', serif; font-size: 32px; font-weight: 600; color: var(--navy); line-height: 1; }
+  .brand-divider { width: 40px; height: 1px; background: var(--gold); margin: 10px auto 0; }
+
+  /* CARD */
+  .card { background: #fff; border: 0.5px solid var(--border); border-radius: 16px; padding: 2rem; width: 100%; max-width: 420px; animation: fadeUp 0.5s ease; box-shadow: 0 2px 24px rgba(27,42,74,0.06); }
+  .card + .card { margin-top: 1rem; }
+
+  /* LESSON INFO */
+  .lesson-label { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--gold); font-weight: 500; margin-bottom: 4px; }
+  .lesson-title { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 600; color: var(--navy); line-height: 1.3; margin-bottom: 4px; }
+  .lesson-time { font-size: 13px; color: var(--text-muted); }
+
+  /* COUNTDOWN */
+  .countdown-wrap { background: var(--navy); border-radius: 12px; padding: 1.25rem; text-align: center; margin: 1.25rem 0; }
+  .countdown-label { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: rgba(255,255,255,0.5); margin-bottom: 6px; }
+  .countdown-digits { font-family: 'Cormorant Garamond', serif; font-size: 42px; font-weight: 500; color: #fff; letter-spacing: 2px; font-variant-numeric: tabular-nums; line-height: 1; }
+  .countdown-sub { font-size: 11px; color: var(--gold); margin-top: 6px; letter-spacing: 1px; text-transform: uppercase; }
+
+  /* STATUS WINDOWS */
+  .windows { display: flex; gap: 6px; margin-bottom: 1.25rem; }
+  .window { flex: 1; padding: 8px 6px; border-radius: 8px; text-align: center; border: 0.5px solid transparent; transition: all 0.3s; }
+  .window-label { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+  .window-desc { font-size: 10px; margin-top: 2px; }
+  .window.inactive { background: #f5f5f5; border-color: #e0e0e0; }
+  .window.inactive .window-label { color: #aaa; }
+  .window.inactive .window-desc { color: #bbb; }
+  .window.open { background: var(--success-bg); border-color: #95d5b2; }
+  .window.open .window-label { color: var(--success); }
+  .window.open .window-desc { color: #52b788; }
+  .window.warn { background: var(--warn-bg); border-color: #f4a261; }
+  .window.warn .window-label { color: var(--warn); }
+  .window.warn .window-desc { color: #e76f51; }
+  .window.closed { background: var(--danger-bg); border-color: #f09595; }
+  .window.closed .window-label { color: var(--danger); }
+  .window.closed .window-desc { color: #e24b4a; }
+
+  /* STATUS MSG */
+  .status-msg { font-size: 12px; color: var(--text-muted); text-align: center; margin-bottom: 1rem; line-height: 1.5; min-height: 36px; }
+
+  /* BUTTONS */
+  .btn { width: 100%; padding: 13px; border-radius: 10px; border: none; cursor: pointer; font-size: 14px; font-weight: 500; font-family: 'DM Sans', sans-serif; transition: all 0.2s; margin-bottom: 8px; letter-spacing: 0.3px; }
+  .btn:last-child { margin-bottom: 0; }
+  .btn-navy { background: var(--navy); color: #fff; }
+  .btn-navy:hover:not(:disabled) { background: var(--navy-light); transform: translateY(-1px); }
+  .btn-gold { background: var(--gold); color: #fff; }
+  .btn-gold:hover:not(:disabled) { background: var(--gold-light); transform: translateY(-1px); }
+  .btn-outline { background: transparent; color: var(--navy); border: 0.5px solid var(--border); }
+  .btn-outline:hover:not(:disabled) { background: var(--cream); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none !important; }
+  .btn-google { background: #fff; color: #444; border: 0.5px solid #ddd; display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .btn-google:hover { background: #f8f8f8; }
+  .btn-google svg { flex-shrink: 0; }
+
+  /* STATS */
+  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stat { background: var(--cream); border-radius: 10px; padding: 12px 8px; text-align: center; }
+  .stat-num { font-family: 'Cormorant Garamond', serif; font-size: 26px; font-weight: 600; line-height: 1; }
+  .stat-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-top: 3px; }
+
+  /* SUCCESS */
+  .success-icon { width: 64px; height: 64px; border-radius: 50%; background: var(--success-bg); display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem; }
+  .success-title { font-family: 'Cormorant Garamond', serif; font-size: 26px; font-weight: 600; color: var(--navy); text-align: center; margin-bottom: 6px; }
+  .success-sub { font-size: 13px; color: var(--text-muted); text-align: center; line-height: 1.6; margin-bottom: 1.25rem; }
+  .confirmed-badge { display: inline-flex; align-items: center; gap: 6px; background: var(--success-bg); padding: 6px 14px; border-radius: 20px; font-size: 12px; color: var(--success); font-weight: 500; }
+
+  /* LOGIN */
+  .login-intro { font-size: 14px; color: var(--text-muted); text-align: center; line-height: 1.6; margin-bottom: 1.5rem; }
+
+  /* ADMIN */
+  .admin-nav { display: flex; gap: 6px; margin-bottom: 1.5rem; }
+  .admin-tab { flex: 1; padding: 8px; border: 0.5px solid var(--border); border-radius: 8px; background: transparent; cursor: pointer; font-size: 12px; font-weight: 500; color: var(--text-muted); font-family: 'DM Sans', sans-serif; transition: all 0.15s; }
+  .admin-tab.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+  .field-group { margin-bottom: 12px; }
+  .field-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 500; margin-bottom: 5px; display: block; }
+  .field-input { width: 100%; padding: 10px 12px; border: 0.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--text); outline: none; transition: border-color 0.15s; }
+  .field-input:focus { border-color: var(--navy); background: #fff; }
+
+  .copy-row { display: flex; gap: 6px; }
+  .copy-row .field-input { flex: 1; }
+  .copy-btn { padding: 10px 14px; border: 0.5px solid var(--border); border-radius: 8px; background: transparent; cursor: pointer; font-size: 12px; color: var(--text-muted); white-space: nowrap; font-family: 'DM Sans', sans-serif; transition: all 0.15s; }
+  .copy-btn:hover { background: var(--cream-dark); }
+
+  /* TABLE */
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); padding: 8px 10px; border-bottom: 0.5px solid var(--border); font-weight: 500; }
+  td { padding: 10px 10px; border-bottom: 0.5px solid var(--border); color: var(--text); }
+  tr:last-child td { border-bottom: none; }
+
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; }
+  .badge-green { background: var(--success-bg); color: var(--success); }
+  .badge-red { background: var(--danger-bg); color: var(--danger); }
+  .badge-amber { background: var(--warn-bg); color: var(--warn); }
+  .badge-blue { background: #E6F1FB; color: #185FA5; }
+
+  .section-title { font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: var(--gold); font-weight: 500; margin-bottom: 1rem; }
+  hr { border: none; border-top: 0.5px solid var(--border); margin: 1.25rem 0; }
+
+  .alert { padding: 10px 14px; border-radius: 8px; font-size: 12px; line-height: 1.6; margin-bottom: 1rem; }
+  .alert-warn { background: var(--warn-bg); color: var(--warn); border-left: 2px solid #f4a261; }
+  .alert-info { background: #E6F1FB; color: #185FA5; border-left: 2px solid #378ADD; }
+
+  /* SPINNER */
+  .spinner { width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; }
+
+  /* ANIMATIONS */
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 480px) {
+    .card { padding: 1.5rem; }
+    .countdown-digits { font-size: 36px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== LOADING PAGE ===== -->
+<div class="page active" id="page-loading">
+  <div class="brand">
+    <div class="brand-mark">Instituto</div>
+    <div class="brand-name">MD Talk</div>
+    <div class="brand-divider"></div>
+  </div>
+  <div style="text-align:center; color: var(--text-muted); font-size: 13px;">Carregando...</div>
+</div>
+
+<!-- ===== LOGIN PAGE ===== -->
+<div class="page" id="page-login">
+  <div class="brand">
+    <div class="brand-mark">Instituto</div>
+    <div class="brand-name">MD Talk</div>
+    <div class="brand-divider"></div>
+  </div>
+  <div class="card">
+    <div class="section-title">Check-in de aula</div>
+    <p class="login-intro">Faça login com o Google para confirmar sua presença e visualizar suas aulas agendadas.</p>
+    <button class="btn btn-google" onclick="startLogin()">
+      <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Entrar com Google
+    </button>
+  </div>
+</div>
+
+<!-- ===== STUDENT PAGE ===== -->
+<div class="page" id="page-student">
+  <div class="brand">
+    <div class="brand-mark">Instituto</div>
+    <div class="brand-name">MD Talk</div>
+    <div class="brand-divider"></div>
+  </div>
+
+  <div id="student-checkin-view">
+    <div class="card">
+      <div class="section-title">Próxima aula</div>
+      <div class="lesson-title" id="s-lesson-title">Carregando...</div>
+      <div class="lesson-time" id="s-lesson-time"></div>
+
+      <div class="countdown-wrap">
+        <div class="countdown-label">Tempo até a aula</div>
+        <div class="countdown-digits" id="s-countdown">--:--:--</div>
+        <div class="countdown-sub" id="s-countdown-sub"></div>
+      </div>
+
+      <div class="windows">
+        <div class="window inactive" id="w1">
+          <div class="window-label">+2h</div>
+          <div class="window-desc">Reagendar</div>
+        </div>
+        <div class="window inactive" id="w2">
+          <div class="window-label">2h–1h</div>
+          <div class="window-desc">Check-in</div>
+        </div>
+        <div class="window inactive" id="w3">
+          <div class="window-label">-1h</div>
+          <div class="window-desc">Check-in</div>
+        </div>
+      </div>
+
+      <div class="status-msg" id="s-status-msg"></div>
+
+      <button class="btn btn-gold" id="btn-reschedule" onclick="doReschedule()" disabled>Reagendar aula</button>
+      <button class="btn btn-navy" id="btn-checkin" onclick="doCheckin()" disabled>Confirmar presença</button>
+      <button class="btn btn-outline" onclick="logout()" style="margin-top:4px; font-size:12px; padding:9px;">Sair</button>
+    </div>
+
+    <div class="card" style="margin-top:1rem;">
+      <div class="section-title">Minhas presenças</div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-num" style="color:var(--success);" id="s-present">—</div>
+          <div class="stat-lbl">Presenças</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num" style="color:var(--danger);" id="s-absent">—</div>
+          <div class="stat-lbl">Faltas</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num" id="s-rate">—</div>
+          <div class="stat-lbl">Freq.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="student-success-view" style="display:none; width:100%; max-width:420px;">
+    <div class="card" style="text-align:center;">
+      <div class="success-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2D6A4F" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="success-title">Presença confirmada</div>
+      <div class="success-sub" id="success-detail"></div>
+      <div style="display:flex; justify-content:center;">
+        <div class="confirmed-badge">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Registrado no Google Sheets
+        </div>
+      </div>
+      <button class="btn btn-outline" onclick="resetCheckin()" style="margin-top:1.25rem;">Voltar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ADMIN PAGE ===== -->
+<div class="page" id="page-admin">
+  <div class="brand">
+    <div class="brand-mark">Instituto</div>
+    <div class="brand-name">MD Talk</div>
+    <div class="brand-divider"></div>
+  </div>
+
+  <div style="width:100%; max-width:480px;">
+    <div class="admin-nav">
+      <button class="admin-tab active" onclick="adminTab('generate', this)">Gerar link</button>
+      <button class="admin-tab" onclick="adminTab('history', this)">Histórico</button>
+      <button class="admin-tab" onclick="adminTab('students', this)">Alunos</button>
+    </div>
+
+    <!-- GENERATE TAB -->
+    <div id="atab-generate">
+      <div class="card">
+        <div class="section-title">Novo link de check-in</div>
+        <div class="field-group">
+          <label class="field-label">Nome do aluno</label>
+          <input class="field-input" type="text" id="a-name" placeholder="Dra. Ana Lima" />
+        </div>
+        <div class="field-group">
+          <label class="field-label">Email do aluno</label>
+          <input class="field-input" type="email" id="a-email" placeholder="ana@email.com" />
+        </div>
+        <div class="field-group">
+          <label class="field-label">Link do evento Google Agenda</label>
+          <input class="field-input" type="text" id="a-event" placeholder="Cole o link do evento" />
+        </div>
+        <div class="field-group">
+          <label class="field-label">Link de reagendamento (Google Agenda)</label>
+          <input class="field-input" type="text" id="a-reschedule" placeholder="Link para o aluno reagendar" />
+        </div>
+        <button class="btn btn-navy" onclick="generateLink()">Gerar link</button>
+        <div id="a-link-output" style="display:none; margin-top:12px;">
+          <label class="field-label">Link gerado</label>
+          <div class="copy-row">
+            <input class="field-input" type="text" id="a-generated-link" readonly />
+            <button class="copy-btn" onclick="copyLink()">Copiar</button>
+          </div>
+          <div style="font-size:11px; color:var(--text-muted); margin-top:6px;">Envie este link para o aluno por WhatsApp ou email.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORY TAB -->
+    <div id="atab-history" style="display:none;">
+      <div class="card">
+        <div class="section-title">Registros de presença</div>
+        <div class="alert alert-info" style="margin-bottom:1rem;">Os dados vêm diretamente do seu Google Sheets.</div>
+        <button class="btn btn-outline" onclick="loadHistory()" style="margin-bottom:1rem;">Atualizar dados</button>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Aluno</th><th>Data</th><th>Status</th></tr></thead>
+            <tbody id="a-history-tbody"><tr><td colspan="3" style="color:var(--text-muted); text-align:center; padding:1.5rem;">Clique em "Atualizar dados"</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- STUDENTS TAB -->
+    <div id="atab-students" style="display:none;">
+      <div class="card">
+        <div class="section-title">Frequência por aluno</div>
+        <div id="a-students-content" style="color:var(--text-muted); font-size:13px; text-align:center; padding:1.5rem 0;">
+          <button class="btn btn-outline" onclick="loadStudentStats()">Carregar frequências</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center; margin-top:1rem;">
+      <button class="btn btn-outline" onclick="logout()" style="max-width:200px; font-size:12px; padding:9px;">Sair da conta admin</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== NO LESSON PAGE ===== -->
+<div class="page" id="page-nolesson">
+  <div class="brand">
+    <div class="brand-mark">Instituto</div>
+    <div class="brand-name">MD Talk</div>
+    <div class="brand-divider"></div>
+  </div>
+  <div class="card" style="text-align:center;">
+    <div style="font-size:32px; margin-bottom:1rem;">📅</div>
+    <div class="lesson-title" style="margin-bottom:8px;">Nenhuma aula encontrada</div>
+    <p style="font-size:13px; color:var(--text-muted); line-height:1.6;">Não encontramos uma aula agendada para você nas próximas 24 horas. Entre em contato com a Thaiana se acreditar que há um erro.</p>
+    <button class="btn btn-outline" onclick="logout()" style="margin-top:1.25rem;">Sair</button>
+  </div>
+</div>
+
+<script>
+// =============================================
+// CONFIGURAÇÃO — NÃO ALTERAR APÓS CONFIGURADO
+// =============================================
+const CLIENT_ID = '54264904472-5lsr34j31hneeaop6n38n4e33g0qu4s7.apps.googleusercontent.com';
+const SPREADSHEET_ID = '1nQgTBdJJ5Tnu1B0oivMr4maWHH1ZS35wDHeoTBuasbg';
+const ADMIN_EMAIL = 'silveiramartignoni@gmail.com';
+const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/spreadsheets';
+
+// =============================================
+// STATE
+// =============================================
+let accessToken = null;
+let currentUser = null;
+let nextLesson = null;
+let countdownInterval = null;
+let checkinDone = false;
+
+// =============================================
+// PAGES
+// =============================================
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+}
+
+// =============================================
+// AUTH
+// =============================================
+function startLogin() {
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: async (resp) => {
+      if (resp.error) { alert('Erro no login: ' + resp.error); return; }
+      accessToken = resp.access_token;
+      await fetchUserInfo();
+    }
+  });
+  client.requestAccessToken();
+}
+
+async function fetchUserInfo() {
+  showPage('loading');
+  try {
+    const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: 'Bearer ' + accessToken }
+    });
+    currentUser = await r.json();
+
+    // Check if admin
+    const urlToken = new URLSearchParams(window.location.search).get('token');
+    if (currentUser.email === ADMIN_EMAIL && !urlToken) {
+      setupAdmin();
+    } else {
+      await setupStudent(urlToken);
+    }
+  } catch(e) {
+    alert('Erro ao carregar dados. Tente novamente.');
+    showPage('login');
+  }
+}
+
+function logout() {
+  accessToken = null;
+  currentUser = null;
+  nextLesson = null;
+  checkinDone = false;
+  if (countdownInterval) clearInterval(countdownInterval);
+  showPage('login');
+}
+
+// =============================================
+// STUDENT FLOW
+// =============================================
+async function setupStudent(urlToken) {
+  // Get student data from URL params
+  const params = new URLSearchParams(window.location.search);
+  const studentName = params.get('student') || currentUser.name;
+  const eventId = params.get('event');
+  const rescheduleLink = params.get('reschedule') ? decodeURIComponent(params.get('reschedule')) : null;
+
+  // Fetch next lesson from Google Calendar
+  nextLesson = await fetchNextLesson(eventId);
+
+  if (!nextLesson) {
+    showPage('nolesson');
+    return;
+  }
+
+  nextLesson.rescheduleLink = rescheduleLink;
+  nextLesson.studentName = studentName;
+  nextLesson.token = urlToken;
+
+  document.getElementById('s-lesson-title').textContent = nextLesson.title;
+  document.getElementById('s-lesson-time').textContent = formatDateTime(nextLesson.start);
+
+  // Load student stats
+  loadStudentStats_student(currentUser.email);
+
+  showPage('student');
+  startCountdown();
+}
+
+async function fetchNextLesson(eventId) {
+  try {
+    const now = new Date().toISOString();
+    const future = new Date(Date.now() + 48 * 3600000).toISOString();
+
+    let url;
+    if (eventId) {
+      // Fetch specific event
+      url = `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`;
+      const r = await fetch(url, { headers: { Authorization: 'Bearer ' + accessToken } });
+      const ev = await r.json();
+      if (ev.id) return { id: ev.id, title: ev.summary || 'Aula MD Talk', start: new Date(ev.start.dateTime || ev.start.date), end: new Date(ev.end.dateTime || ev.end.date) };
+    }
+
+    // Search upcoming events with "MD Talk" or "aula" in title
+    url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${now}&timeMax=${future}&singleEvents=true&orderBy=startTime&maxResults=10&q=MD+Talk`;
+    const r = await fetch(url, { headers: { Authorization: 'Bearer ' + accessToken } });
+    const data = await r.json();
+
+    if (data.items && data.items.length > 0) {
+      const ev = data.items[0];
+      return { id: ev.id, title: ev.summary || 'Aula MD Talk', start: new Date(ev.start.dateTime || ev.start.date), end: new Date(ev.end.dateTime || ev.end.date) };
+    }
+
+    // Try broader search
+    const url2 = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${now}&timeMax=${future}&singleEvents=true&orderBy=startTime&maxResults=5`;
+    const r2 = await fetch(url2, { headers: { Authorization: 'Bearer ' + accessToken } });
+    const data2 = await r2.json();
+    if (data2.items && data2.items.length > 0) {
+      const ev = data2.items[0];
+      return { id: ev.id, title: ev.summary || 'Aula MD Talk', start: new Date(ev.start.dateTime || ev.start.date), end: new Date(ev.end.dateTime || ev.end.date) };
+    }
+
+    return null;
+  } catch(e) {
+    console.error('Calendar error:', e);
+    return null;
+  }
+}
+
+function startCountdown() {
+  if (countdownInterval) clearInterval(countdownInterval);
+  updateCountdown();
+  countdownInterval = setInterval(updateCountdown, 1000);
+}
+
+function updateCountdown() {
+  if (!nextLesson) return;
+  const now = new Date();
+  const diff = nextLesson.start - now;
+
+  // After lesson ends
+  if (now > nextLesson.end) {
+    document.getElementById('s-countdown').textContent = '00:00:00';
+    document.getElementById('s-countdown-sub').textContent = 'Aula encerrada';
+    document.getElementById('s-status-msg').textContent = 'O período de check-in encerrou.';
+    document.getElementById('btn-checkin').disabled = true;
+    document.getElementById('btn-reschedule').disabled = true;
+    setWindows('past');
+    if (!checkinDone) autoRegisterAbsence();
+    clearInterval(countdownInterval);
+    return;
+  }
+
+  // Display countdown
+  if (diff > 0) {
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    document.getElementById('s-countdown').textContent =
+      String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  } else {
+    document.getElementById('s-countdown').textContent = 'Aula em andamento';
+  }
+
+  const mins = diff / 60000;
+  const btnC = document.getElementById('btn-checkin');
+  const btnR = document.getElementById('btn-reschedule');
+  const msg = document.getElementById('s-status-msg');
+
+  if (checkinDone) {
+    btnC.disabled = true;
+    btnR.disabled = true;
+    msg.textContent = 'Presença já confirmada para esta aula.';
+    return;
+  }
+
+  if (mins > 120) {
+    btnC.disabled = false;
+    btnR.disabled = !nextLesson.rescheduleLink;
+    msg.textContent = 'Reagendamento e check-in disponíveis.';
+    document.getElementById('s-countdown-sub').textContent = 'Reagendamento disponível';
+    setWindows('early');
+  } else if (mins > 60) {
+    btnC.disabled = false;
+    btnR.disabled = true;
+    msg.textContent = 'Prazo de reagendamento encerrado. Você ainda pode fazer check-in.';
+    document.getElementById('s-countdown-sub').textContent = 'Somente check-in disponível';
+    setWindows('mid');
+  } else if (mins > 0) {
+    btnC.disabled = false;
+    btnR.disabled = true;
+    msg.textContent = 'Janela de check-in ativa. Confirme sua presença agora.';
+    document.getElementById('s-countdown-sub').textContent = 'Confirme sua presença';
+    setWindows('late');
+  } else {
+    // Lesson in progress
+    btnC.disabled = false;
+    btnR.disabled = true;
+    msg.textContent = 'Aula em andamento. Confirme sua presença.';
+    document.getElementById('s-countdown-sub').textContent = 'Aula em andamento';
+    setWindows('live');
+  }
+}
+
+function setWindows(state) {
+  const w1 = document.getElementById('w1');
+  const w2 = document.getElementById('w2');
+  const w3 = document.getElementById('w3');
+  w1.className = 'window inactive';
+  w2.className = 'window inactive';
+  w3.className = 'window inactive';
+  if (state === 'early') { w1.className = 'window open'; }
+  else if (state === 'mid') { w1.className = 'window closed'; w2.className = 'window open'; }
+  else if (state === 'late' || state === 'live') { w1.className = 'window closed'; w2.className = 'window warn'; w3.className = 'window open'; }
+  else if (state === 'past') { w1.className = 'window closed'; w2.className = 'window closed'; w3.className = 'window closed'; }
+}
+
+async function doCheckin() {
+  const btn = document.getElementById('btn-checkin');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+
+  const row = [
+    nextLesson.token || 'direto',
+    nextLesson.studentName || currentUser.name,
+    currentUser.email,
+    formatDateTime(nextLesson.start),
+    'presente',
+    new Date().toLocaleString('pt-BR')
+  ];
+
+  const ok = await appendToSheet(row);
+  checkinDone = true;
+
+  document.getElementById('student-checkin-view').style.display = 'none';
+  document.getElementById('student-success-view').style.display = 'block';
+  document.getElementById('success-detail').textContent =
+    nextLesson.title + ' · ' + formatDateTime(nextLesson.start);
+
+  if (countdownInterval) clearInterval(countdownInterval);
+}
+
+async function autoRegisterAbsence() {
+  if (checkinDone) return;
+  const row = [
+    nextLesson.token || 'direto',
+    nextLesson.studentName || currentUser.name,
+    currentUser.email,
+    formatDateTime(nextLesson.start),
+    'falta',
+    new Date().toLocaleString('pt-BR')
+  ];
+  await appendToSheet(row);
+}
+
+function doReschedule() {
+  if (nextLesson && nextLesson.rescheduleLink) {
+    window.open(nextLesson.rescheduleLink, '_blank');
+  }
+}
+
+function resetCheckin() {
+  document.getElementById('student-checkin-view').style.display = 'block';
+  document.getElementById('student-success-view').style.display = 'none';
+}
+
+async function loadStudentStats_student(email) {
+  try {
+    const data = await readSheet();
+    if (!data || !data.values) return;
+    const rows = data.values.slice(1);
+    const mine = rows.filter(r => r[2] === email);
+    const present = mine.filter(r => r[4] === 'presente').length;
+    const absent = mine.filter(r => r[4] === 'falta').length;
+    const total = present + absent;
+    document.getElementById('s-present').textContent = present;
+    document.getElementById('s-absent').textContent = absent;
+    document.getElementById('s-rate').textContent = total > 0 ? Math.round((present/total)*100) + '%' : '—';
+  } catch(e) {}
+}
+
+// =============================================
+// ADMIN FLOW
+// =============================================
+function setupAdmin() {
+  showPage('admin');
+}
+
+function adminTab(tab, el) {
+  document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  ['generate','history','students'].forEach(t => {
+    document.getElementById('atab-' + t).style.display = t === tab ? 'block' : 'none';
+  });
+}
+
+function generateLink() {
+  const name = document.getElementById('a-name').value.trim();
+  const email = document.getElementById('a-email').value.trim();
+  const event = document.getElementById('a-event').value.trim();
+  const reschedule = document.getElementById('a-reschedule').value.trim();
+
+  if (!name || !email) { alert('Preencha nome e email do aluno.'); return; }
+
+  const token = btoa(email + ':' + Date.now()).replace(/[^a-zA-Z0-9]/g, '').substring(0, 20);
+  const base = window.location.origin + window.location.pathname;
+  let link = base + '?token=' + token + '&student=' + encodeURIComponent(name);
+  if (event) link += '&event=' + encodeURIComponent(event);
+  if (reschedule) link += '&reschedule=' + encodeURIComponent(reschedule);
+
+  document.getElementById('a-generated-link').value = link;
+  document.getElementById('a-link-output').style.display = 'block';
+}
+
+function copyLink() {
+  const input = document.getElementById('a-generated-link');
+  input.select();
+  try { document.execCommand('copy'); } catch(e) {}
+  const btn = document.querySelector('.copy-btn');
+  const orig = btn.textContent;
+  btn.textContent = 'Copiado!';
+  setTimeout(() => btn.textContent = orig, 1500);
+}
+
+async function loadHistory() {
+  const tbody = document.getElementById('a-history-tbody');
+  tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:1.5rem; color:var(--text-muted);">Carregando...</td></tr>';
+  try {
+    const data = await readSheet();
+    if (!data || !data.values || data.values.length <= 1) {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:1.5rem; color:var(--text-muted);">Nenhum registro ainda.</td></tr>';
+      return;
+    }
+    const rows = data.values.slice(1).reverse();
+    tbody.innerHTML = rows.map(r => {
+      const status = r[4] || '';
+      const badgeClass = status === 'presente' ? 'badge-green' : status === 'falta' ? 'badge-red' : 'badge-amber';
+      return `<tr><td>${r[1] || ''}</td><td style="white-space:nowrap;">${r[3] || ''}</td><td><span class="badge ${badgeClass}">${status}</span></td></tr>`;
+    }).join('');
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:1.5rem; color:var(--danger);">Erro ao carregar dados.</td></tr>';
+  }
+}
+
+async function loadStudentStats() {
+  const cont = document.getElementById('a-students-content');
+  cont.innerHTML = '<p style="color:var(--text-muted); font-size:13px;">Carregando...</p>';
+  try {
+    const data = await readSheet();
+    if (!data || !data.values || data.values.length <= 1) {
+      cont.innerHTML = '<p style="color:var(--text-muted); font-size:13px;">Nenhum dado ainda.</p>';
+      return;
+    }
+    const rows = data.values.slice(1);
+    const byStudent = {};
+    rows.forEach(r => {
+      const name = r[1] || r[2] || 'Desconhecido';
+      if (!byStudent[name]) byStudent[name] = { present: 0, absent: 0 };
+      if (r[4] === 'presente') byStudent[name].present++;
+      else if (r[4] === 'falta') byStudent[name].absent++;
+    });
+
+    cont.innerHTML = Object.entries(byStudent).map(([name, s]) => {
+      const total = s.present + s.absent;
+      const rate = total > 0 ? Math.round((s.present/total)*100) : 0;
+      const color = rate >= 75 ? 'var(--success)' : rate >= 50 ? 'var(--warn)' : 'var(--danger)';
+      return `<div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:0.5px solid var(--border);">
+        <div>
+          <div style="font-size:13px; font-weight:500;">${name}</div>
+          <div style="font-size:11px; color:var(--text-muted);">${s.present} pres. · ${s.absent} falta${s.absent !== 1 ? 's' : ''}</div>
+        </div>
+        <div style="font-family:'Cormorant Garamond',serif; font-size:22px; font-weight:600; color:${color};">${rate}%</div>
+      </div>`;
+    }).join('') + '<button class="btn btn-outline" onclick="loadStudentStats()" style="margin-top:12px; font-size:12px;">Atualizar</button>';
+  } catch(e) {
+    cont.innerHTML = '<p style="color:var(--danger); font-size:13px;">Erro ao carregar dados.</p>';
+  }
+}
+
+// =============================================
+// SHEETS API
+// =============================================
+async function appendToSheet(rowData) {
+  try {
+    const r = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Sheet1!A:F:append?valueInputOption=USER_ENTERED`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + accessToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ values: [rowData] })
+      }
+    );
+    return r.ok;
+  } catch(e) {
+    console.error('Sheets append error:', e);
+    return false;
+  }
+}
+
+async function readSheet() {
+  const r = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Sheet1!A:F`,
+    { headers: { Authorization: 'Bearer ' + accessToken } }
+  );
+  return await r.json();
+}
+
+// =============================================
+// UTILS
+// =============================================
+function formatDateTime(d) {
+  if (!d) return '';
+  return d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }) +
+    ' às ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+// =============================================
+// INIT
+// =============================================
+window.addEventListener('load', () => {
+  // Check if returning with token (student link)
+  const params = new URLSearchParams(window.location.search);
+  const hasToken = params.has('token') || params.has('student');
+  showPage('login');
+});
+</script>
+</body>
+</html>
