@@ -195,6 +195,20 @@
       <div class="lesson-title" id="s-lesson-title">Carregando...</div>
       <div class="lesson-time" id="s-lesson-time"></div>
 
+      <div id="s-meet-row" style="display:none; margin-top:12px;">
+        <a id="s-meet-link" href="#" target="_blank" class="btn btn-meet" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;border-radius:10px;background:#1a73e8;color:#fff;text-decoration:none;font-size:14px;font-weight:500;font-family:DM Sans,sans-serif;transition:all 0.2s;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+          Entrar no Google Meet
+        </a>
+      </div>
+
+      <div id="s-drive-row" style="display:none; margin-top:8px;">
+        <a id="s-drive-link" href="#" target="_blank" class="btn btn-outline" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;border-radius:10px;text-decoration:none;font-size:14px;font-weight:500;font-family:DM Sans,sans-serif;color:var(--navy);border:0.5px solid var(--border);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          Minha pasta no Drive
+        </a>
+      </div>
+
       <div class="countdown-wrap">
         <div class="countdown-label">Tempo até a aula</div>
         <div class="countdown-digits" id="s-countdown">--:--:--</div>
@@ -298,6 +312,10 @@
         <div class="field-group">
           <label class="field-label">Link de reagendamento (Google Agenda)</label>
           <input class="field-input" type="text" id="a-reschedule" placeholder="Link para o aluno reagendar" />
+        </div>
+        <div class="field-group">
+          <label class="field-label">Link da pasta no Google Drive (individual)</label>
+          <input class="field-input" type="text" id="a-drive" placeholder="Cole o link da pasta do aluno" />
         </div>
         <button class="btn btn-navy" onclick="generateLink()">Gerar link</button>
         <div id="a-link-output" style="display:none; margin-top:12px;">
@@ -455,6 +473,19 @@ async function setupStudent(urlToken) {
   document.getElementById('s-lesson-title').textContent = nextLesson.title;
   document.getElementById('s-lesson-time').textContent = formatDateTime(nextLesson.start);
 
+  // Show Meet button if event has a Meet link
+  if (nextLesson.meetLink) {
+    document.getElementById('s-meet-link').href = nextLesson.meetLink;
+    document.getElementById('s-meet-row').style.display = 'block';
+  }
+
+  // Show Drive button if URL has driveLink param
+  const driveLink = params.get('drive') ? decodeURIComponent(params.get('drive')) : null;
+  if (driveLink) {
+    document.getElementById('s-drive-link').href = driveLink;
+    document.getElementById('s-drive-row').style.display = 'block';
+  }
+
   // Load student stats
   loadStudentStats_student(currentUser.email);
 
@@ -487,7 +518,8 @@ async function fetchNextLesson(eventId) {
       id: ev.id,
       title: ev.summary || 'Aula MD Talk',
       start: new Date(ev.start.dateTime || ev.start.date),
-      end: new Date(ev.end.dateTime || ev.end.date)
+      end: new Date(ev.end.dateTime || ev.end.date),
+      meetLink: ev.hangoutLink || null
     };
   } catch(e) {
     console.error('Calendar error:', e);
@@ -544,7 +576,7 @@ function updateCountdown() {
 
   if (mins > 120) {
     btnC.disabled = false;
-    btnR.disabled = !nextLesson.rescheduleLink;
+    btnR.disabled = false;
     msg.textContent = 'Reagendamento e check-in disponíveis.';
     document.getElementById('s-countdown-sub').textContent = 'Reagendamento disponível';
     setWindows('early');
@@ -606,6 +638,13 @@ async function doCheckin() {
     nextLesson.title + ' · ' + formatDateTime(nextLesson.start);
 
   if (countdownInterval) clearInterval(countdownInterval);
+
+  // Open WhatsApp with pre-written message
+  const waNumber = '5514997758941';
+  const waMsg = encodeURIComponent('Confirmo minha presença na aula de hoje.');
+  setTimeout(() => {
+    window.open('https://wa.me/' + waNumber + '?text=' + waMsg, '_blank');
+  }, 800);
 }
 
 async function autoRegisterAbsence() {
@@ -698,10 +737,12 @@ function generateLink() {
   if (!name || !email) { alert('Preencha nome e email do aluno.'); return; }
 
   const token = btoa(email + ':' + Date.now()).replace(/[^a-zA-Z0-9]/g, '').substring(0, 20);
+  const drive = document.getElementById('a-drive').value.trim();
   const base = window.location.origin + window.location.pathname;
   let link = base + '?token=' + token + '&student=' + encodeURIComponent(name);
   if (event) link += '&event=' + encodeURIComponent(event);
   if (reschedule) link += '&reschedule=' + encodeURIComponent(reschedule);
+  if (drive) link += '&drive=' + encodeURIComponent(drive);
 
   document.getElementById('a-generated-link').value = link;
   document.getElementById('a-link-output').style.display = 'block';
