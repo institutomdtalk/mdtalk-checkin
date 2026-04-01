@@ -619,6 +619,8 @@ async function doCheckin() {
   const btn = document.getElementById('btn-checkin');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>';
+  checkinDone = true;
+  checkinDone = true;
 
   const row = [
     nextLesson.token || 'direto',
@@ -630,7 +632,9 @@ async function doCheckin() {
   ];
 
   const ok = await appendToSheet(row);
-  checkinDone = true;
+
+  // Restore button before switching views
+  btn.innerHTML = 'Confirmar presença';
 
   document.getElementById('student-checkin-view').style.display = 'none';
   document.getElementById('student-success-view').style.display = 'block';
@@ -667,6 +671,17 @@ function doReschedule() {
 function resetCheckin() {
   document.getElementById('student-checkin-view').style.display = 'block';
   document.getElementById('student-success-view').style.display = 'none';
+
+  // Reset button to confirmed state — no more spinning
+  const btnC = document.getElementById('btn-checkin');
+  btnC.disabled = true;
+  btnC.innerHTML = 'Presença confirmada';
+  btnC.style.background = 'var(--success)';
+
+  const btnR = document.getElementById('btn-reschedule');
+  btnR.disabled = true;
+
+  document.getElementById('s-status-msg').textContent = 'Presença já confirmada para esta aula.';
 }
 
 async function loadStudentStats_student(email) {
