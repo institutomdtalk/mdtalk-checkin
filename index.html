@@ -443,7 +443,8 @@ async function setupStudent(urlToken) {
   }
 
   nextLesson.rescheduleLink = rescheduleLink;
-  nextLesson.studentName = studentName;
+  nextLesson.studentName = currentUser.name || studentName;
+  nextLesson.studentEmail = currentUser.email;
   nextLesson.token = urlToken;
 
   document.getElementById('s-lesson-title').textContent = nextLesson.title;
@@ -585,7 +586,7 @@ async function doCheckin() {
   const row = [
     nextLesson.token || 'direto',
     nextLesson.studentName || currentUser.name,
-    currentUser.email,
+    nextLesson.studentEmail || currentUser.email,
     formatDateTime(nextLesson.start),
     'presente',
     new Date().toLocaleString('pt-BR')
@@ -607,7 +608,7 @@ async function autoRegisterAbsence() {
   const row = [
     nextLesson.token || 'direto',
     nextLesson.studentName || currentUser.name,
-    currentUser.email,
+    nextLesson.studentEmail || currentUser.email,
     formatDateTime(nextLesson.start),
     'falta',
     new Date().toLocaleString('pt-BR')
