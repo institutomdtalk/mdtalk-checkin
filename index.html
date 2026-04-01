@@ -432,11 +432,10 @@ async function setupStudent(urlToken) {
   // Get student data from URL params
   const params = new URLSearchParams(window.location.search);
   const studentName = params.get('student') || currentUser.name;
-  const eventId = params.get('event');
   const rescheduleLink = params.get('reschedule') ? decodeURIComponent(params.get('reschedule')) : null;
 
-  // Fetch next lesson from Google Calendar
-  nextLesson = await fetchNextLesson(eventId);
+  // Fetch next lesson — only events organized by silveiramartignoni@gmail.com
+  nextLesson = await fetchNextLesson(null);
 
   if (!nextLesson) {
     showPage('nolesson');
@@ -460,37 +459,30 @@ async function setupStudent(urlToken) {
 async function fetchNextLesson(eventId) {
   try {
     const now = new Date().toISOString();
-    const future = new Date(Date.now() + 48 * 3600000).toISOString();
+    const future = new Date(Date.now() + 72 * 3600000).toISOString();
 
-    let url;
-    if (eventId) {
-      // Fetch specific event
-      url = `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`;
-      const r = await fetch(url, { headers: { Authorization: 'Bearer ' + accessToken } });
-      const ev = await r.json();
-      if (ev.id) return { id: ev.id, title: ev.summary || 'Aula MD Talk', start: new Date(ev.start.dateTime || ev.start.date), end: new Date(ev.end.dateTime || ev.end.date) };
-    }
-
-    // Search upcoming events with "MD Talk" or "aula" in title
-    url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${now}&timeMax=${future}&singleEvents=true&orderBy=startTime&maxResults=10&q=MD+Talk`;
+    // Search upcoming events in student's calendar
+    const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${now}&timeMax=${future}&singleEvents=true&orderBy=startTime&maxResults=50`;
     const r = await fetch(url, { headers: { Authorization: 'Bearer ' + accessToken } });
     const data = await r.json();
 
-    if (data.items && data.items.length > 0) {
-      const ev = data.items[0];
-      return { id: ev.id, title: ev.summary || 'Aula MD Talk', start: new Date(ev.start.dateTime || ev.start.date), end: new Date(ev.end.dateTime || ev.end.date) };
-    }
+    if (!data.items) return null;
 
-    // Try broader search
-    const url2 = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${now}&timeMax=${future}&singleEvents=true&orderBy=startTime&maxResults=5`;
-    const r2 = await fetch(url2, { headers: { Authorization: 'Bearer ' + accessToken } });
-    const data2 = await r2.json();
-    if (data2.items && data2.items.length > 0) {
-      const ev = data2.items[0];
-      return { id: ev.id, title: ev.summary || 'Aula MD Talk', start: new Date(ev.start.dateTime || ev.start.date), end: new Date(ev.end.dateTime || ev.end.date) };
-    }
+    // Filter ONLY events organized by Thaiana (silveiramartignoni@gmail.com)
+    const mdtalkEvents = data.items.filter(ev => {
+      const organizer = ev.organizer && ev.organizer.email;
+      return organizer === ADMIN_EMAIL;
+    });
 
-    return null;
+    if (mdtalkEvents.length === 0) return null;
+
+    const ev = mdtalkEvents[0];
+    return {
+      id: ev.id,
+      title: ev.summary || 'Aula MD Talk',
+      start: new Date(ev.start.dateTime || ev.start.date),
+      end: new Date(ev.end.dateTime || ev.end.date)
+    };
   } catch(e) {
     console.error('Calendar error:', e);
     return null;
