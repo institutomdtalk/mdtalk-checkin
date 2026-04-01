@@ -225,7 +225,7 @@
 
     <div class="card" style="margin-top:1rem;">
       <div class="section-title">Minhas presenças</div>
-      <div class="stat-row">
+      <div class="stat-row" style="margin-bottom:1.25rem;">
         <div class="stat">
           <div class="stat-num" style="color:var(--success);" id="s-present">—</div>
           <div class="stat-lbl">Presenças</div>
@@ -238,6 +238,10 @@
           <div class="stat-num" id="s-rate">—</div>
           <div class="stat-lbl">Freq.</div>
         </div>
+      </div>
+      <div class="section-title">Histórico de aulas</div>
+      <div id="s-history-list">
+        <div style="text-align:center; padding:1rem 0; font-size:13px; color:var(--text-muted);">Carregando...</div>
       </div>
     </div>
   </div>
@@ -629,16 +633,45 @@ function resetCheckin() {
 async function loadStudentStats_student(email) {
   try {
     const data = await readSheet();
-    if (!data || !data.values) return;
+    if (!data || !data.values) {
+      document.getElementById('s-history-list').innerHTML = '<div style="text-align:center;padding:1rem 0;font-size:13px;color:var(--text-muted);">Nenhum registro ainda.</div>';
+      return;
+    }
     const rows = data.values.slice(1);
-    const mine = rows.filter(r => r[2] === email);
+    const mine = rows.filter(r => r[2] === email).reverse();
     const present = mine.filter(r => r[4] === 'presente').length;
     const absent = mine.filter(r => r[4] === 'falta').length;
     const total = present + absent;
     document.getElementById('s-present').textContent = present;
     document.getElementById('s-absent').textContent = absent;
     document.getElementById('s-rate').textContent = total > 0 ? Math.round((present/total)*100) + '%' : '—';
-  } catch(e) {}
+
+    const histEl = document.getElementById('s-history-list');
+    if (mine.length === 0) {
+      histEl.innerHTML = '<div style="text-align:center;padding:1rem 0;font-size:13px;color:var(--text-muted);">Nenhuma aula registrada ainda.</div>';
+      return;
+    }
+    histEl.innerHTML = mine.map(r => {
+      const status = r[4] || '';
+      const isPresent = status === 'presente';
+      const color = isPresent ? 'var(--success)' : 'var(--danger)';
+      const bg = isPresent ? 'var(--success-bg)' : 'var(--danger-bg)';
+      const icon = isPresent
+        ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+        : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:0.5px solid var(--border);">
+        <div>
+          <div style="font-size:13px;font-weight:500;color:var(--text);">${r[3] || '—'}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${r[5] ? r[5].split(',')[0] : ''}</div>
+        </div>
+        <div style="display:inline-flex;align-items:center;gap:5px;background:${bg};color:${color};padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500;">
+          ${icon} ${status}
+        </div>
+      </div>`;
+    }).join('') + '<div style="height:4px;"></div>';
+  } catch(e) {
+    document.getElementById('s-history-list').innerHTML = '<div style="text-align:center;padding:1rem 0;font-size:13px;color:var(--danger);">Erro ao carregar histórico.</div>';
+  }
 }
 
 // =============================================
