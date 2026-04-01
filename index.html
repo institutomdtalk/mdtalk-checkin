@@ -360,6 +360,7 @@
 const CLIENT_ID = '54264904472-5lsr34j31hneeaop6n38n4e33g0qu4s7.apps.googleusercontent.com';
 const SPREADSHEET_ID = '1nQgTBdJJ5Tnu1B0oivMr4maWHH1ZS35wDHeoTBuasbg';
 const ADMIN_EMAIL = 'silveiramartignoni@gmail.com';
+const RESCHEDULE_LINK = 'https://calendar.app.google/T57FAGxWR6XiGWqY8';
 const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/spreadsheets';
 
 // =============================================
@@ -617,9 +618,7 @@ async function autoRegisterAbsence() {
 }
 
 function doReschedule() {
-  if (nextLesson && nextLesson.rescheduleLink) {
-    window.open(nextLesson.rescheduleLink, '_blank');
-  }
+  window.open(RESCHEDULE_LINK, "_blank");
 }
 
 function resetCheckin() {
